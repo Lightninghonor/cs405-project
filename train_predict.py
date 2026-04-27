@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -14,6 +15,7 @@ TEST_SIMPLE_PATH = Path("test_simple.csv")
 TEST_COMPLEX_PATH = Path("test_complex.csv")
 PRED_SIMPLE_PATH = Path("pred_simple.csv")
 PRED_COMPLEX_PATH = Path("pred_complex.csv")
+MODEL_PATH = Path("trained_model.pkl")
 
 
 def build_temporal_features(df: pd.DataFrame, base_cols: list[str]) -> pd.DataFrame:
@@ -91,6 +93,27 @@ def write_predictions(path: Path, prob: np.ndarray, threshold: float) -> None:
     print(f"Wrote {path}: {len(pred)} rows, predicted positives={int(pred.sum())}", flush=True)
 
 
+def save_model_bundle(
+    path: Path,
+    model: XGBClassifier,
+    threshold: float,
+    base_cols: list[str],
+    metrics: dict[str, float],
+    final_scale_pos_weight: float,
+) -> None:
+    bundle = {
+        "model": model,
+        "threshold": threshold,
+        "base_cols": base_cols,
+        "validation_metrics": metrics,
+        "final_scale_pos_weight": final_scale_pos_weight,
+        "feature_builder": "build_temporal_features in train_predict.py",
+    }
+    with path.open("wb") as f:
+        pickle.dump(bundle, f)
+    print(f"Wrote {path}", flush=True)
+
+
 def main() -> None:
     print("Loading data...", flush=True)
     train = pd.read_csv(TRAIN_PATH)
@@ -143,6 +166,14 @@ def main() -> None:
 
     write_predictions(PRED_SIMPLE_PATH, simple_prob, threshold)
     write_predictions(PRED_COMPLEX_PATH, complex_prob, threshold)
+    save_model_bundle(
+        MODEL_PATH,
+        final_model,
+        threshold,
+        base_cols,
+        metrics,
+        final_scale_pos_weight,
+    )
 
 
 if __name__ == "__main__":

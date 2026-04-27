@@ -15,6 +15,7 @@ No test labels or external labeled data are used.
 - `test_simple.csv`: unlabeled test data for Task 1.
 - `test_complex.csv`: unlabeled test data for Task 2.
 - `train_predict.py`: final training and prediction script.
+- `trained_model.pkl`: trained XGBoost model bundle with threshold and metadata.
 - `pred_simple.csv`: prediction output for `test_simple.csv`.
 - `pred_complex.csv`: prediction output for `test_complex.csv`.
 - `method_comparison.csv`: comparison of several baseline methods.
@@ -89,7 +90,8 @@ This will:
 2. Build temporal features.
 3. Train and validate the XGBoost model using chronological validation.
 4. Retrain the final model on all training data.
-5. Generate:
+5. Save `trained_model.pkl`.
+6. Generate:
    - `pred_simple.csv`
    - `pred_complex.csv`
 
@@ -108,6 +110,24 @@ The generated files have been checked:
 
 - `pred_simple.csv`: 25647 rows, 953 predicted anomalies
 - `pred_complex.csv`: 34542 rows, 831 predicted anomalies
+
+## Trained Model File
+
+The trained model is saved as:
+
+```text
+trained_model.pkl
+```
+
+It is a Python pickle bundle containing:
+
+- `model`: fitted `XGBClassifier`
+- `threshold`: selected validation threshold
+- `base_cols`: original feature column names
+- `validation_metrics`: validation F1, precision, recall, AP, and prediction rate
+- `final_scale_pos_weight`: class imbalance weight used for final training
+
+The same temporal feature function in `train_predict.py` should be used before calling the loaded model.
 
 ## Method Comparison
 
