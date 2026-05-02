@@ -127,7 +127,7 @@ def save_model_bundle(
     bundle = {
         "xgb_model": xgb_model,
         "et_model": et_model,
-        "blend_weights": {"et": 0.75, "xgb": 0.25},
+        "blend_weights": {"et": 0.8, "xgb": 0.2},
         "threshold": threshold,
         "base_cols": base_cols,
         "validation_metrics": metrics,
@@ -155,8 +155,8 @@ def main() -> None:
 
     # Positives are concentrated near the end of train.csv, so this late forward
     # split keeps chronological order while still giving train/validation positives.
-    train_end = int(len(train) * 0.94)
-    val_end = int(len(train) * 0.98)
+    train_end = int(len(train) * 0.959)
+    val_end = int(len(train) * 0.999)
     val_scale_pos_weight = float(
         (train_end - y[:train_end].sum()) / max(1, y[:train_end].sum())
     )
@@ -164,11 +164,11 @@ def main() -> None:
     val_et_model = make_et_model()
     val_xgb_model = make_xgb_model(val_scale_pos_weight)
     print("Fitting validation blend models (ET + XGBoost)...", flush=True)
-    val_et_model.fit(x_train.iloc[:train_end], y[:train_end])
+    val_et_model.fit(x_train.iloc[:train_end], y[:train_end])       
     val_xgb_model.fit(x_train.iloc[:train_end], y[:train_end])
     val_et_prob = val_et_model.predict_proba(x_train.iloc[train_end:val_end])[:, 1]
     val_xgb_prob = val_xgb_model.predict_proba(x_train.iloc[train_end:val_end])[:, 1]
-    val_prob = 0.75 * val_et_prob + 0.25 * val_xgb_prob
+    val_prob = 0.8 * val_et_prob + 0.2 * val_xgb_prob
     threshold, metrics = choose_threshold(y[train_end:val_end], val_prob)
 
     val_pred = (val_prob >= threshold).astype(np.int8)
@@ -193,12 +193,12 @@ def main() -> None:
 
     print("Predicting test files...", flush=True)
     simple_prob = (
-        0.75 * final_et_model.predict_proba(x_simple)[:, 1]
-        + 0.25 * final_xgb_model.predict_proba(x_simple)[:, 1]
+        0.8 * final_et_model.predict_proba(x_simple)[:, 1]
+        + 0.2 * final_xgb_model.predict_proba(x_simple)[:, 1]
     )
     complex_prob = (
-        0.75 * final_et_model.predict_proba(x_complex)[:, 1]
-        + 0.25 * final_xgb_model.predict_proba(x_complex)[:, 1]
+        0.8 * final_et_model.predict_proba(x_complex)[:, 1]
+        + 0.2 * final_xgb_model.predict_proba(x_complex)[:, 1]
     )
 
     write_predictions(PRED_SIMPLE_PATH, simple_prob, threshold)

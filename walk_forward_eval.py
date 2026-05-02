@@ -27,7 +27,7 @@ def main() -> None:
     x_temporal = build_temporal_features(train, base_cols)
 
     # 固定验证跨度 4%，训练起点滑动
-    train_starts = [0.91, 0.92, 0.93, 0.94, 0.95]
+    train_starts = [0.91, 0.92, 0.93, 0.94, 0.95, 0.955, 0.96]
     windows = [(r, r + 0.04) for r in train_starts]
     wf_rows: list[dict[str, float | str | int]] = []
     print("\nRunning walk-forward backtest...", flush=True)
