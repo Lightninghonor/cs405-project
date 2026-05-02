@@ -23,7 +23,9 @@ No test labels or external labeled data are used.
 
 ## Final Method
 
-The final model is `XGBoost` with temporal feature engineering.
+The final model is a blended temporal ensemble:
+
+- `0.75 * ExtraTrees + 0.25 * XGBoost`
 
 Feature engineering includes:
 
@@ -35,7 +37,8 @@ Feature engineering includes:
 
 Only current and past time steps are used, so the feature construction does not leak future information.
 
-Class imbalance is handled using XGBoost's `scale_pos_weight`.
+Class imbalance is handled using XGBoost's `scale_pos_weight` and ExtraTrees'
+`balanced_subsample` class weighting.
 
 The decision threshold is selected on a chronological validation split by maximizing F1 score.
 
@@ -52,13 +55,13 @@ The final model is then trained on the full `train.csv` and used unchanged for b
 
 ## Validation Result
 
-The final `XGBoost + temporal features` model achieved:
+The final `Blend ET 0.75 + XGBoost temporal` model achieved:
 
-- F1: `0.8944`
-- Precision: `0.9283`
-- Recall: `0.8630`
-- Average Precision: `0.9490`
-- Threshold: `0.122445`
+- F1: `0.9276`
+- Precision: `0.9834`
+- Recall: `0.8778`
+- Average Precision: `0.9511`
+- Threshold: `0.033006`
 
 ## Environment
 
@@ -88,7 +91,7 @@ This will:
 
 1. Load `train.csv`, `test_simple.csv`, and `test_complex.csv`.
 2. Build temporal features.
-3. Train and validate the XGBoost model using chronological validation.
+3. Train and validate the blended ET+XGBoost model using chronological validation.
 4. Retrain the final model on all training data.
 5. Save `trained_model.pkl`.
 6. Generate:
@@ -121,7 +124,9 @@ trained_model.pkl
 
 It is a Python pickle bundle containing:
 
-- `model`: fitted `XGBClassifier`
+- `et_model`: fitted temporal `ExtraTrees` pipeline
+- `xgb_model`: fitted temporal `XGBClassifier`
+- `blend_weights`: weighted average coefficients
 - `threshold`: selected validation threshold
 - `base_cols`: original feature column names
 - `validation_metrics`: validation F1, precision, recall, AP, and prediction rate
@@ -131,11 +136,11 @@ The same temporal feature function in `train_predict.py` should be used before c
 
 ## Method Comparison
 
-The best validation result came from XGBoost with temporal features:
+The best validation result came from the ET+XGBoost temporal blend:
 
 | Method | F1 | Precision | Recall | AP |
 |---|---:|---:|---:|---:|
-| XGBoost + temporal features | 0.8944 | 0.9283 | 0.8630 | 0.9490 |
+| Blend ET 0.75 + XGBoost temporal | 0.9276 | 0.9834 | 0.8778 | 0.9511 |
 | ExtraTrees + temporal features | 0.8594 | 0.9234 | 0.8037 | 0.8496 |
 | XGBoost + raw features | 0.8512 | 0.8659 | 0.8370 | 0.9250 |
 | LightGBM + temporal features | 0.6454 | 0.6983 | 0.6000 | 0.5968 |

@@ -5,7 +5,10 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import ExtraTreesClassifier
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import average_precision_score, precision_recall_curve
+from sklearn.pipeline import Pipeline
 from xgboost import XGBClassifier
 
 
@@ -51,7 +54,7 @@ def build_temporal_features(df: pd.DataFrame, base_cols: list[str]) -> pd.DataFr
     return pd.concat(pieces, axis=1)
 
 
-def make_model(scale_pos_weight: float) -> XGBClassifier:
+def make_xgb_model(scale_pos_weight: float) -> XGBClassifier:
     return XGBClassifier(
         objective="binary:logistic",
         eval_metric="aucpr",
@@ -66,6 +69,25 @@ def make_model(scale_pos_weight: float) -> XGBClassifier:
         scale_pos_weight=scale_pos_weight,
         n_jobs=-1,
         random_state=RANDOM_STATE,
+    )
+
+
+def make_et_model() -> Pipeline:
+    return Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            (
+                "model",
+                ExtraTreesClassifier(
+                    n_estimators=250,
+                    max_features="sqrt",
+                    min_samples_leaf=2,
+                    class_weight="balanced_subsample",
+                    n_jobs=-1,
+                    random_state=RANDOM_STATE,
+                ),
+            ),
+        ]
     )
 
 
@@ -95,14 +117,17 @@ def write_predictions(path: Path, prob: np.ndarray, threshold: float) -> None:
 
 def save_model_bundle(
     path: Path,
-    model: XGBClassifier,
+    xgb_model: XGBClassifier,
+    et_model: Pipeline,
     threshold: float,
     base_cols: list[str],
     metrics: dict[str, float],
     final_scale_pos_weight: float,
 ) -> None:
     bundle = {
-        "model": model,
+        "xgb_model": xgb_model,
+        "et_model": et_model,
+        "blend_weights": {"et": 0.75, "xgb": 0.25},
         "threshold": threshold,
         "base_cols": base_cols,
         "validation_metrics": metrics,
@@ -136,10 +161,14 @@ def main() -> None:
         (train_end - y[:train_end].sum()) / max(1, y[:train_end].sum())
     )
 
-    val_model = make_model(val_scale_pos_weight)
-    print("Fitting validation XGBoost model...", flush=True)
-    val_model.fit(x_train.iloc[:train_end], y[:train_end])
-    val_prob = val_model.predict_proba(x_train.iloc[train_end:val_end])[:, 1]
+    val_et_model = make_et_model()
+    val_xgb_model = make_xgb_model(val_scale_pos_weight)
+    print("Fitting validation blend models (ET + XGBoost)...", flush=True)
+    val_et_model.fit(x_train.iloc[:train_end], y[:train_end])
+    val_xgb_model.fit(x_train.iloc[:train_end], y[:train_end])
+    val_et_prob = val_et_model.predict_proba(x_train.iloc[train_end:val_end])[:, 1]
+    val_xgb_prob = val_xgb_model.predict_proba(x_train.iloc[train_end:val_end])[:, 1]
+    val_prob = 0.75 * val_et_prob + 0.25 * val_xgb_prob
     threshold, metrics = choose_threshold(y[train_end:val_end], val_prob)
 
     val_pred = (val_prob >= threshold).astype(np.int8)
@@ -156,19 +185,28 @@ def main() -> None:
     )
 
     final_scale_pos_weight = float((len(y) - y.sum()) / max(1, y.sum()))
-    final_model = make_model(final_scale_pos_weight)
-    print("Fitting final XGBoost model on all training data...", flush=True)
-    final_model.fit(x_train, y)
+    final_et_model = make_et_model()
+    final_xgb_model = make_xgb_model(final_scale_pos_weight)
+    print("Fitting final blend models on all training data...", flush=True)
+    final_et_model.fit(x_train, y)
+    final_xgb_model.fit(x_train, y)
 
     print("Predicting test files...", flush=True)
-    simple_prob = final_model.predict_proba(x_simple)[:, 1]
-    complex_prob = final_model.predict_proba(x_complex)[:, 1]
+    simple_prob = (
+        0.75 * final_et_model.predict_proba(x_simple)[:, 1]
+        + 0.25 * final_xgb_model.predict_proba(x_simple)[:, 1]
+    )
+    complex_prob = (
+        0.75 * final_et_model.predict_proba(x_complex)[:, 1]
+        + 0.25 * final_xgb_model.predict_proba(x_complex)[:, 1]
+    )
 
     write_predictions(PRED_SIMPLE_PATH, simple_prob, threshold)
     write_predictions(PRED_COMPLEX_PATH, complex_prob, threshold)
     save_model_bundle(
         MODEL_PATH,
-        final_model,
+        final_xgb_model,
+        final_et_model,
         threshold,
         base_cols,
         metrics,
