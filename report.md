@@ -14,6 +14,10 @@ header-includes:
   - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
 ---
 
+**Team:** Lei Yu (12412215) & Jin Juncheng (12313212)
+
+**Contribution:** Jin Juncheng built the initial architecture of `walk_forward_eval.py`, `compare_lgbm_xgboost.py`, and `train_predict.py` (baseline ET + XGBoost blend, temporal feature engineering, grid-search blend weights, walk-forward validation framework). Lei Yu implemented `experiment_new.py` (six experimental directions: extended features, LightGBM DART, HistGradientBoosting, Isolation Forest meta-feature, 4-model Stacking, F-beta threshold variants), analysed the results, applied the best-performing approach (HistGB + extended features + F-beta threshold) back into `train_predict.py`, and wrote this report.
+
 # 1  Introduction
 
 This report describes our approach to supervised anomaly detection on noisy,
@@ -119,25 +123,22 @@ We evaluated six model families and several ensemble combinations.
 
 The original baseline blends two complementary models:
 
-**ExtraTrees** 
-(`n_estimators=250`, `max_features="sqrt"`,
-`min_samples_leaf=2`, 
+**ExtraTrees** (`n_estimators=250`, `max_features="sqrt"`,
+`min_samples_leaf=2`,
 
-`class_weight="balanced_subsample"`) preceded by a
-median imputer.  Extra-randomised splits reduce variance and improve
-robustness to label noise.
+`class_weight="balanced_subsample"`) preceded by a median imputer.
+Extra-randomised splits reduce variance and improve robustness to label noise.
 
-**XGBoost** 
-(`n_estimators=350`, `learning_rate=0.03`, `max_depth=3`,
+**XGBoost** (`n_estimators=350`, `learning_rate=0.03`, `max_depth=3`,
 `min_child_weight=5`, `subsample=0.9`, `colsample_bytree=0.8`,
-`reg_lambda=3.0`, `eval_metric="aucpr"`, 
+`reg_lambda=3.0`, `eval_metric="aucpr"`,
 
 `scale_pos_weight` set to the
 negative-to-positive ratio of the training subset).  Shallow trees with
 strong regularisation prevent overfitting to the sparse positive class.
 
 The blend weight **0.75 × ET + 0.25 × XGBoost** was determined by a grid
-search (step 0.05) over the validation set.
+search (step 0.05) in `compare_lgbm_xgboost.py` over the validation set.
 
 ### 3.2.2  HistGradientBoosting (Final Model)
 
@@ -181,7 +182,8 @@ threshold has been fixed on the validation segment.
 
 We additionally ran a **walk-forward evaluation** over five expanding windows
 to verify that performance improves monotonically as more positive examples
-enter the training set (Table 2).
+enter the training set (Table 2).  The walk-forward uses the ET + XGBoost
+blend (0.75 × ET + 0.25 × XGBoost) implemented in `walk_forward_eval.py`.
 
 | Window | Train positives | Val positives | F1 |
 |---|---|---|---|
@@ -191,7 +193,7 @@ enter the training set (Table 2).
 | 0–94 % → 94–98 % | 180 | 270 | 0.899 |
 | 0–95 % → 95–99 % | 270 | 270 | **0.918** |
 
-Table: Walk-forward validation results (ET + XGBoost blend).
+Table: Walk-forward validation results (ET + XGBoost blend, 0.75/0.25).
 
 ## 3.4  Decision Threshold Selection
 
@@ -210,7 +212,8 @@ We select the threshold by maximising the target metric on the validation set:
 ## 4.1  Experiment Comparison
 
 Table 3 reports validation metrics for all evaluated methods under the
-95 %/99 % chronological split.
+95 %/99 % chronological split (both `experiment_new.py` and
+`train_predict.py`).
 
 | Method | F1 | Precision | Recall | AP | MCC |
 |---|---|---|---|---|---|
@@ -325,3 +328,17 @@ This script will:
 The `trained_model.pkl` bundle contains the serialised HistGB model,
 ET + XGBoost baseline models, both decision thresholds, feature column names,
 and validation metrics.
+
+The other scripts serve the following roles:
+
+- `compare_lgbm_xgboost.py` (Jin Juncheng): evaluates five single models and
+  performs a grid search over ET + XGBoost blend weights (step 0.05),
+  writing results to `validation_comparison.csv`.
+- `walk_forward_eval.py` (Jin Juncheng): runs a five-window walk-forward
+  backtest (training start sliding from 91 % to 95 %, fixed 4 % validation
+  span) using the ET + XGBoost blend, writing results to
+  `walk_forward_comparison.csv`.
+- `experiment_new.py` (Lei Yu): explores six algorithmic directions
+  (extended features, LightGBM DART, HistGradientBoosting, Isolation Forest
+  meta-feature, 4-model Stacking, F-beta threshold variants) and writes a
+  comparison table to `experiment_comparison.csv`.

@@ -27,7 +27,7 @@ experiment_new.py — 新算法与特征工程实验脚本
   - 在 F1 基础上额外考虑 F-beta（beta=0.5，更重视精确率）
   - 对 Task2 使用更保守阈值（提高精确率，降低误报）
 
-所有方向均在同一时序切分（前94%训练 / 94%~98%验证）上评估，
+所有方向均在同一时序切分（前95%训练 / 95%~99%验证）上评估，
 结果写入 experiment_comparison.csv，按 F1 降序排列。
 """
 
@@ -56,8 +56,8 @@ warnings.filterwarnings("ignore")
 
 # ── 常量 ───────────────────────────────────────────────────────────────────────
 RANDOM_STATE = 42
-TRAIN_END_RATIO = 0.94
-VAL_END_RATIO = 0.98
+TRAIN_END_RATIO = 0.95
+VAL_END_RATIO = 0.99
 EXPERIMENT_CSV = "experiment_comparison.csv"
 PRED_SIMPLE_NEW = "pred_simple_new.csv"
 PRED_COMPLEX_NEW = "pred_complex_new.csv"

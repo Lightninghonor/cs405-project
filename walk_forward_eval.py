@@ -32,9 +32,9 @@ from compare_lgbm_xgboost import (
     positive_proba,
 )
 
-# ET 权重（XGBoost 权重 = 1 - BLEND_ET_WEIGHT = 0.20）
-# 注：此处使用 0.80 而非最终方案的 0.75，用于独立验证融合鲁棒性
-BLEND_ET_WEIGHT = 0.80
+# ET 权重（XGBoost 权重 = 1 - BLEND_ET_WEIGHT = 0.25）
+# 与 compare_lgbm_xgboost.py 网格搜索确定的最优权重保持一致
+BLEND_ET_WEIGHT = 0.75
 WALK_FORWARD_CSV = "walk_forward_comparison.csv"
 
 
@@ -99,7 +99,7 @@ def main() -> None:
         # ── 4. 在验证集上融合预测并选阈值 ─────────────────────────────────────
         wf_et_prob = positive_proba(wf_et, x_temporal.iloc[wf_train_end:wf_val_end])
         wf_xgb_prob = positive_proba(wf_xgb, x_temporal.iloc[wf_train_end:wf_val_end])
-        # 加权融合：ET 权重 0.80，XGBoost 权重 0.20
+        # 加权融合：ET 权重 0.75，XGBoost 权重 0.25
         wf_blend_prob = BLEND_ET_WEIGHT * wf_et_prob + (1.0 - BLEND_ET_WEIGHT) * wf_xgb_prob
         wf_metrics = choose_threshold(wf_y_val, wf_blend_prob)
 
