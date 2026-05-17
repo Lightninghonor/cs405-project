@@ -1,12 +1,15 @@
 ---
 title: "CS405 Project: Robust Anomaly Detection in Noisy Time-Series Data"
-author: "TeamID\\_Name\\_report"
+author: "Lei Yu (12412215) & Jin Juncheng (12313212)"
 date: "May 2026"
 geometry: margin=1in
 fontsize: 11pt
 header-includes:
   - \usepackage{booktabs}
   - \usepackage{float}
+  - \usepackage{longtable}
+  - \setlength{\LTleft}{0pt}
+  - \setlength{\LTright}{0pt}
   - \usepackage{hyperref}
   - \hypersetup{colorlinks=true, linkcolor=blue, urlcolor=blue}
 ---
@@ -116,14 +119,20 @@ We evaluated six model families and several ensemble combinations.
 
 The original baseline blends two complementary models:
 
-**ExtraTrees** (`n_estimators=250`, `max_features="sqrt"`,
-`min_samples_leaf=2`, `class_weight="balanced_subsample"`) preceded by a
+**ExtraTrees** 
+(`n_estimators=250`, `max_features="sqrt"`,
+`min_samples_leaf=2`, 
+
+`class_weight="balanced_subsample"`) preceded by a
 median imputer.  Extra-randomised splits reduce variance and improve
 robustness to label noise.
 
-**XGBoost** (`n_estimators=350`, `learning_rate=0.03`, `max_depth=3`,
+**XGBoost** 
+(`n_estimators=350`, `learning_rate=0.03`, `max_depth=3`,
 `min_child_weight=5`, `subsample=0.9`, `colsample_bytree=0.8`,
-`reg_lambda=3.0`, `eval_metric="aucpr"`, `scale_pos_weight` set to the
+`reg_lambda=3.0`, `eval_metric="aucpr"`, 
+
+`scale_pos_weight` set to the
 negative-to-positive ratio of the training subset).  Shallow trees with
 strong regularisation prevent overfitting to the sparse positive class.
 
@@ -205,14 +214,14 @@ Table 3 reports validation metrics for all evaluated methods under the
 
 | Method | F1 | Precision | Recall | AP | MCC |
 |---|---|---|---|---|---|
-| **HistGB + extended features** | **0.9797** | **0.9744** | **0.9852** | **0.9971** | **0.9787** |
+| **HistGB + extended features (ours)** | **0.9797** | **0.9744** | **0.9852** | **0.9971** | **0.9787** |
 | ET 0.6 + HistGB 0.4 (extended) | 0.9240 | 0.9753 | 0.8778 | 0.9492 | 0.9217 |
 | 4-model Stacking | 0.9146 | 0.9377 | 0.8926 | 0.9584 | 0.9106 |
 | ET 0.6 + LGBM DART 0.4 (extended) | 0.9126 | 0.9592 | 0.8704 | 0.9304 | 0.9095 |
-| **Baseline: ET 0.75 + XGBoost** | **0.9225** | **0.9675** | **0.8815** | **0.9615** | **0.9198** |
 | LightGBM DART (extended) | 0.8876 | 0.9494 | 0.8333 | 0.9215 | 0.8842 |
 | Extended features + ET + XGBoost | 0.8699 | 0.9640 | 0.7926 | 0.9134 | 0.8684 |
 | IsoForest meta-feature + ET + XGBoost | 0.8668 | 0.9356 | 0.8074 | 0.9143 | 0.8630 |
+| Baseline: ET 0.75 + XGBoost | 0.9225 | 0.9675 | 0.8815 | 0.9615 | 0.9198 |
 
 Table: Validation performance of all evaluated methods (95 %/99 % split).
 
@@ -301,7 +310,6 @@ baseline (F1 = 0.9225).
 All predictions can be reproduced by running:
 
 ```bash
-conda activate cs405
 python train_predict.py
 ```
 
